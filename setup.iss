@@ -30,3 +30,6 @@ Source: "lib\*"; DestDir: "{app}\lib"
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"
 Name: "{commondesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{commonappdata}\{#AppNameNoSpace}"

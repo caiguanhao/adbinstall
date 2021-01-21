@@ -21,11 +21,14 @@ import (
 var (
 	version = "1.0"
 
+	imageDir = filepath.Join(os.Getenv("PROGRAMDATA"), "AndroidUpdater", "image")
+
 	md            *walk.Dialog
 	adbAddress    *walk.ComboBox
 	scanButton    *walk.LinkLabel
 	console       *walk.TextEdit
 	viewButton    *walk.PushButton
+	imageButton   *walk.PushButton
 	flashButton   *walk.PushButton
 	apkLinkLabel  *walk.LinkLabel
 	apkFilePaths  []string
@@ -120,6 +123,13 @@ func main() {
 								},
 							},
 							PushButton{
+								AssignTo: &imageButton,
+								Text:     "IMAGE...",
+								OnClicked: func() {
+									showDownloader()
+								},
+							},
+							PushButton{
 								AssignTo: &flashButton,
 								Text:     "FLASH",
 								OnClicked: func() {
@@ -127,7 +137,7 @@ func main() {
 								},
 							},
 							TextLabel{
-								StretchFactor: 3,
+								StretchFactor: 2,
 							},
 						},
 					},
@@ -255,15 +265,7 @@ func main() {
 			},
 		},
 	}.Create(nil)
-	dpi := float64(md.DPI()) / 96
-	screenWidth := int(float64(win.GetSystemMetrics(win.SM_CXSCREEN)) / dpi)
-	screenHeight := int(float64(win.GetSystemMetrics(win.SM_CYSCREEN)) / dpi)
-	md.SetX((screenWidth - md.MinSize().Width) / 2)
-	md.SetY((screenHeight - md.MinSize().Height) / 2)
-	icon, _ := walk.NewIconFromResourceId(2)
-	if icon != nil {
-		md.SetIcon(icon)
-	}
+	updateDialog(md)
 	enable()
 	md.Run()
 	if existingAdbPid == 0 {
@@ -276,9 +278,22 @@ func main() {
 	}
 }
 
+func updateDialog(d *walk.Dialog) {
+	dpi := float64(d.DPI()) / 96
+	screenWidth := int(float64(win.GetSystemMetrics(win.SM_CXSCREEN)) / dpi)
+	screenHeight := int(float64(win.GetSystemMetrics(win.SM_CYSCREEN)) / dpi)
+	d.SetX((screenWidth - d.MinSize().Width) / 2)
+	d.SetY((screenHeight - d.MinSize().Height) / 2)
+	icon, _ := walk.NewIconFromResourceId(2)
+	if icon != nil {
+		d.SetIcon(icon)
+	}
+}
+
 func disable() {
 	adbAddress.SetEnabled(false)
 	viewButton.SetEnabled(false)
+	imageButton.SetEnabled(false)
 	flashButton.SetEnabled(false)
 	openButton.SetEnabled(false)
 	installButton.SetEnabled(false)
@@ -290,6 +305,7 @@ func disable() {
 func enable() {
 	adbAddress.SetEnabled(true)
 	viewButton.SetEnabled(true)
+	imageButton.SetEnabled(true)
 	flashButton.SetEnabled(true)
 	openButton.SetEnabled(true)
 	installButton.SetEnabled(len(apkFilePaths) > 0)
@@ -352,17 +368,17 @@ func flash() {
 		funcs := connect()
 		funcs = append(funcs,
 			run("cmd", "/c", `lib\adb.exe`, "reboot", "bootloader"),
-			run("cmd", "/c", `lib\fastboot.exe`, "flash", "devcfg", `lib\devcfg.mbn`),
-			run("cmd", "/c", `lib\fastboot.exe`, "flash", "devcfgbak", `lib\devcfg.mbn`),
-			run("cmd", "/c", `lib\fastboot.exe`, "flash", "dsp", `lib\adspso.bin`),
-			run("cmd", "/c", `lib\fastboot.exe`, "flash", "cache", `lib\cache.img`),
-			run("cmd", "/c", `lib\fastboot.exe`, "flash", "aboot", `lib\emmc_appsboot.mbn`),
-			run("cmd", "/c", `lib\fastboot.exe`, "flash", "boot", `lib\boot.img`),
-			run("cmd", "/c", `lib\fastboot.exe`, "flash", "persist", `lib\persist.img`),
-			run("cmd", "/c", `lib\fastboot.exe`, "flash", "recovery", `lib\recovery.img`),
-			run("cmd", "/c", `lib\fastboot.exe`, "flash", "-S", "500M", "system", `lib\system.img`),
-			run("cmd", "/c", `lib\fastboot.exe`, "flash", "userdata", `lib\userdata.img`),
-			run("cmd", "/c", `lib\fastboot.exe`, "reboot"),
+			run("cmd", "/c", filepath.Join(imageDir, "fastboot.exe"), "flash", "devcfg", filepath.Join(imageDir, "devcfg.mbn")),
+			run("cmd", "/c", filepath.Join(imageDir, "fastboot.exe"), "flash", "devcfgbak", filepath.Join(imageDir, "devcfg.mbn")),
+			run("cmd", "/c", filepath.Join(imageDir, "fastboot.exe"), "flash", "dsp", filepath.Join(imageDir, "adspso.bin")),
+			run("cmd", "/c", filepath.Join(imageDir, "fastboot.exe"), "flash", "cache", filepath.Join(imageDir, "cache.img")),
+			run("cmd", "/c", filepath.Join(imageDir, "fastboot.exe"), "flash", "aboot", filepath.Join(imageDir, "emmc_appsboot.mbn")),
+			run("cmd", "/c", filepath.Join(imageDir, "fastboot.exe"), "flash", "boot", filepath.Join(imageDir, "boot.img")),
+			run("cmd", "/c", filepath.Join(imageDir, "fastboot.exe"), "flash", "persist", filepath.Join(imageDir, "persist.img")),
+			run("cmd", "/c", filepath.Join(imageDir, "fastboot.exe"), "flash", "recovery", filepath.Join(imageDir, "recovery.img")),
+			run("cmd", "/c", filepath.Join(imageDir, "fastboot.exe"), "flash", "-S", "500M", "system", filepath.Join(imageDir, "system.img")),
+			run("cmd", "/c", filepath.Join(imageDir, "fastboot.exe"), "flash", "userdata", filepath.Join(imageDir, "userdata.img")),
+			run("cmd", "/c", filepath.Join(imageDir, "fastboot.exe"), "reboot"),
 		)
 		if existingAdbPid == -1 {
 			existingAdbPid = findADBProcess()
