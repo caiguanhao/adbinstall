@@ -19,7 +19,9 @@ import (
 )
 
 var (
-	version = "1.0"
+	version = "1.1"
+
+	libAdbExe = `lib\adb.exe`
 
 	imageDir = filepath.Join(os.Getenv("PROGRAMDATA"), "AndroidUpdater", "image")
 
@@ -266,6 +268,7 @@ func main() {
 		},
 	}.Create(nil)
 	updateDialog(md)
+	go updateImageButtonText()
 	enable()
 	md.Run()
 	if existingAdbPid == 0 {
@@ -314,6 +317,14 @@ func enable() {
 	uninstallBtn.SetEnabled(installedPkgs.Text() != "")
 }
 
+func adbExe() string {
+	p := filepath.Join(imageDir, "adb.exe")
+	if _, err := os.Stat(p); err == nil {
+		return p
+	}
+	return libAdbExe
+}
+
 func connect() (funcs []func() bool) {
 	addr := strings.TrimSpace(adbAddress.Text())
 	if addr == lastAdbAddress {
@@ -324,8 +335,8 @@ func connect() (funcs []func() bool) {
 		return
 	}
 	funcs = append(funcs,
-		run("cmd", "/c", `lib\adb.exe`, "disconnect"),
-		run("cmd", "/c", `lib\adb.exe`, "connect", addr),
+		run("cmd", "/c", libAdbExe, "disconnect"),
+		run("cmd", "/c", libAdbExe, "connect", addr),
 		func() bool {
 			lastAdbAddress = addr
 			return true
@@ -340,7 +351,7 @@ func start() {
 		defer enable()
 		funcs := connect()
 		funcs = append(funcs,
-			run("cmd", "/c", `lib\adb.exe`, "devices"),
+			run("cmd", "/c", libAdbExe, "devices"),
 			run("cmd", "/c", `lib\scrcpy.exe`),
 		)
 		if existingAdbPid == -1 {
@@ -367,7 +378,7 @@ func flash() {
 		defer enable()
 		funcs := connect()
 		funcs = append(funcs,
-			run("cmd", "/c", `lib\adb.exe`, "reboot", "bootloader"),
+			run("cmd", "/c", adbExe(), "reboot", "bootloader"),
 			run("cmd", "/c", filepath.Join(imageDir, "fastboot.exe"), "flash", "devcfg", filepath.Join(imageDir, "devcfg.mbn")),
 			run("cmd", "/c", filepath.Join(imageDir, "fastboot.exe"), "flash", "devcfgbak", filepath.Join(imageDir, "devcfg.mbn")),
 			run("cmd", "/c", filepath.Join(imageDir, "fastboot.exe"), "flash", "dsp", filepath.Join(imageDir, "adspso.bin")),
@@ -425,7 +436,7 @@ func install() {
 			if apk != "" {
 				funcs = append(funcs,
 					println("Installing", apk),
-					run("cmd", "/c", `lib\adb.exe`, "install", "-r", apk),
+					run("cmd", "/c", libAdbExe, "install", "-r", apk),
 				)
 			}
 		}
@@ -454,7 +465,7 @@ func reload() {
 				return
 			}
 		}
-		out := output("cmd", "/c", `lib\adb.exe`, "shell", "cmd", "package", "list", "packages", "-3")
+		out := output("cmd", "/c", libAdbExe, "shell", "cmd", "package", "list", "packages", "-3")
 		installedPkgs.SetModel(strings.Fields(regexp.MustCompile("(?m)^package:").ReplaceAllString(string(out), "")))
 		installedPkgs.SetCurrentIndex(0)
 	}()
@@ -469,7 +480,7 @@ func uninstall() {
 		if pkg != "" {
 			funcs = append(funcs,
 				println("Uninstalling", pkg),
-				run("cmd", "/c", `lib\adb.exe`, "uninstall", pkg),
+				run("cmd", "/c", libAdbExe, "uninstall", pkg),
 			)
 		}
 		if existingAdbPid == -1 {

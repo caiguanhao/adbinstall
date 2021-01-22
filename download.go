@@ -154,6 +154,7 @@ func showDownloader() {
 	if cancelDownload != nil {
 		cancelDownload()
 	}
+	go updateImageButtonText()
 }
 
 func download() {
@@ -276,6 +277,21 @@ func downloadFile(ctx context.Context, url, file string, progChan chan progress)
 	}()
 	_, err = io.Copy(f, resp.Body)
 	return err
+}
+
+func updateImageButtonText() {
+	var size int64
+	filepath.Walk(imageDir, func(_ string, info os.FileInfo, err error) error {
+		if err == nil && !info.IsDir() {
+			size += info.Size()
+		}
+		return nil
+	})
+	if size == 0 {
+		imageButton.SetText("GET IMAGE...")
+	} else {
+		imageButton.SetText(fmt.Sprintf("IMG (%s)", formatSize(size)))
+	}
 }
 
 func formatSize(b int64) string {
